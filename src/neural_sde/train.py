@@ -15,13 +15,13 @@ def gaussian_nll(dx, mean, var, eps=1e-6):
 def train_mle(
     model,
     dataset,
-    epochs: int = 20,
-    batch_size: int = 128,
-    lr: float = 1e-3,
-    device: str = "cpu",
-    delta: float = 1.0 / 252.0,
-    l2_mu: float = 1e-2,
-    l2_sigma: float = 1e-3,
+    epochs = 20,
+    batch_size = 128,
+    lr = 1e-3,
+    device = "cpu",
+    delta = 1.0 / 252.0,
+    l2_mu = 1e-2,
+    l2_sigma = 1e-3,
 ):
     """Maximum likelihood training loop.
 
@@ -31,10 +31,6 @@ def train_mle(
 
     where Δ is `delta`. We treat all (x_t, x_{t+1}) pairs inside a window as
     conditionally independent given the model parameters.
-
-    Regularisation:
-      - l2_mu    : penalises large drift outputs μ̂ (keeps drift modest).
-      - l2_sigma : penalises large |log σ̂|, i.e. avoids σ̂ being tiny or huge.
     """
     model.to(device)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -68,7 +64,7 @@ def train_mle(
             if l2_mu > 0.0:
                 reg_mu = (mu_hat ** 2).mean()
 
-            # diffusion regularisation: keep log σ̂ near 0 (σ̂ ~ 1 in normalised units)
+            # diffusion regularisation: keep log σ̂ near 0 
             reg_sigma = 0.0
             if l2_sigma > 0.0:
                 # +eps inside log to avoid log(0)
