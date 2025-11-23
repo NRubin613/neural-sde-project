@@ -9,7 +9,7 @@ class TimeDistributedMLP(nn.Module):
     ``(batch, time, out_dim)``.
     """
 
-    def __init__(self, in_dim: int = 2, hidden: int = 64, out_dim: int = 1):
+    def __init__(self, in_dim = 2, hidden = 64, out_dim = 1):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(in_dim, hidden),
@@ -19,7 +19,7 @@ class TimeDistributedMLP(nn.Module):
             nn.Linear(hidden, out_dim),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x) -> torch.Tensor:
         if x.ndim != 3:
             raise ValueError(f"expected (B, T, D) got shape {x.shape}")
         b, t, d = x.shape
@@ -35,12 +35,12 @@ class DriftNet(nn.Module):
     simulating.  The scale can be tuned via ``drift_scale``.
     """
 
-    def __init__(self, hidden: int = 64, drift_scale: float = 0.1):
+    def __init__(self, hidden = 64, drift_scale = 0.1):
         super().__init__()
         self.tmlp = TimeDistributedMLP(in_dim=2, hidden=hidden, out_dim=1)
         self.drift_scale = drift_scale
 
-    def forward(self, x_t: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    def forward(self, x_t, t) -> torch.Tensor:
         inp = torch.cat([x_t, t], dim=-1)
         mu_raw = self.tmlp(inp)
         return self.drift_scale * torch.tanh(mu_raw)
@@ -53,7 +53,7 @@ class DiffusionNet(nn.Module):
         super().__init__()
         self.tmlp = TimeDistributedMLP(in_dim=2, hidden=hidden, out_dim=1)
 
-    def forward(self, x_t: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    def forward(self, x_t, t) -> torch.Tensor:
         inp = torch.cat([x_t, t], dim=-1)
         sigma_raw = self.tmlp(inp)
         # softplus keeps σ strictly positive but behaves like identity for
@@ -69,5 +69,5 @@ class NeuralSDE(nn.Module):
         self.mu = DriftNet(hidden=hidden, drift_scale=drift_scale)
         self.sigma = DiffusionNet(hidden=hidden)
 
-    def forward(self, x_t: torch.Tensor, t: torch.Tensor):
+    def forward(self, x_t, t):
         return self.mu(x_t, t), self.sigma(x_t, t)
