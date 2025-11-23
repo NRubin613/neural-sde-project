@@ -126,7 +126,7 @@ def _acf(x, nlags=40):
     corr = np.correlate(x, x, mode="full")
     corr = corr[corr.size // 2:]      # lags 0,1,2,...
     corr = corr[1:nlags + 2]
-    return corr / corr[1]
+    return corr / corr[0]
 
 
 def plot_comparison(real_log, gen_log, save_path,

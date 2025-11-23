@@ -58,7 +58,9 @@ class DiffusionNet(nn.Module):
         sigma_raw = self.tmlp(inp)
         # softplus keeps σ strictly positive but behaves like identity for
         # large |x|; the small epsilon protects against log(0) in the loss.
-        return torch.nn.functional.softplus(sigma_raw) + 1e-6
+        sigma = torch.nn.functional.softplus(sigma_raw) + 1e-6
+        sigma = torch.clamp(sigma, max=1)  # prevent extreme values
+        return sigma
 
 
 class NeuralSDE(nn.Module):
