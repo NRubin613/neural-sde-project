@@ -1,17 +1,13 @@
 import os
-
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
 
-# ----------------------------------------------------------------------
 # Local CSV + synthetic fallback
-# ----------------------------------------------------------------------
 
-
-def _make_synthetic_series(n: int = 2000, seed: int = 0) -> pd.DataFrame:
+def _make_synthetic_series(n = 2000, seed = 0) -> pd.DataFrame:
     """
     Fallback when market data is not available.
 
@@ -36,12 +32,10 @@ def _make_synthetic_series(n: int = 2000, seed: int = 0) -> pd.DataFrame:
     return pd.DataFrame({"date": dates, "close": price})
 
 
-def _clean_price_csv(df: pd.DataFrame) -> pd.DataFrame:
+def _clean_price_csv(df) -> pd.DataFrame:
     """
     Clean a raw DataFrame that should contain at least a date column and a
-    price column. Returns a DataFrame with:
-        - date : datetime64
-        - close: float
+    price column. 
 
     Robust to junk rows like ',^GSPC' in the close column and
     slightly different column names.
@@ -83,11 +77,11 @@ def _clean_price_csv(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_or_download(
-    data_dir: str,
-    ticker: str,
-    start: str,
-    end: str,
-    interval: str = "1d",
+    data_dir,
+    ticker,
+    start,
+    end,
+    interval = "1d",
 ) -> pd.DataFrame:
     """
     Load price data for a given ticker.
@@ -127,9 +121,7 @@ def load_or_download(
     return df
 
 
-# ----------------------------------------------------------------------
 # Preprocessing: log prices and windows
-# ----------------------------------------------------------------------
 
 
 def to_log_prices(close_series) -> np.ndarray:
@@ -140,7 +132,7 @@ def to_log_prices(close_series) -> np.ndarray:
     return np.log(arr)
 
 
-def make_windows(x: np.ndarray, seq_len: int, normalise: bool = False) -> np.ndarray:
+def make_windows(x: np.ndarray, seq_len, normalise = False) -> np.ndarray:
     """
     Slice a 1D array into overlapping windows of length ``seq_len``.
 
@@ -168,24 +160,22 @@ def make_windows(x: np.ndarray, seq_len: int, normalise: bool = False) -> np.nda
     return np.stack(windows, axis=0)
 
 
-# ----------------------------------------------------------------------
 # Dataset wrapper
-# ----------------------------------------------------------------------
 
 
 class TimeSeriesWindowsDataset(Dataset):
     """Simple Dataset wrapper around a ``(N, L)`` array of windows."""
 
-    def __init__(self, windows: np.ndarray):
+    def __init__(self, windows):
         super().__init__()
         if windows.ndim != 2:
             raise ValueError("windows should be 2D (num_windows, L)")
         # (N, L, 1)
         self.windows = torch.from_numpy(windows).float().unsqueeze(-1)
 
-    def __len__(self) -> int:
+    def __len__(self):
         return self.windows.shape[0]
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, idx):
         # returns (L, 1)
         return self.windows[idx]
