@@ -5,10 +5,10 @@ import torch
 def simulate_paths(
     model: torch.nn.Module,
     x0,
-    steps: int = 256,
-    delta: float = 1.0 / 252.0,
-    device: str = "cpu",
-    n: int = 1,
+    steps = 256,
+    delta = 1.0 / 252.0,
+    device = "cpu",
+    n = 1,
 ):
     """Simulate sample paths from a trained NeuralSDE.
 
@@ -17,7 +17,7 @@ def simulate_paths(
     model:
         Trained ``NeuralSDE`` instance.
     x0:
-        Initial log‑price.  Can be a float or scalar tensor.
+        Initial log‑price
     steps:
         Number of Euler–Maruyama steps to take.
     delta:
@@ -30,7 +30,7 @@ def simulate_paths(
 
     Returns
     -------
-    list[list[float]]
+    
         A list containing ``n`` paths, each of length ``steps + 1``.
     """
     model.eval().to(device)
