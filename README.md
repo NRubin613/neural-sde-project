@@ -33,17 +33,14 @@ increments.
 pip install -r requirements.txt
 ```
 
-Everything is standard (`torch`, `numpy`, `pandas`, `matplotlib`, `yfinance`,
+Everything is standard (`torch`, `numpy`, `pandas`, `matplotlib`, `os`,
 `scipy`).
 
 
 ## Training
 
 ```bash
-python scripts/train_sde.py \
-    --ticker "^GSPC" \
-    --start 2010-01-01 \
-    --end   2020-01-01
+python3 -m scripts.train_sde --ticker ^GSPC --start 2005-01-01 --end 2025-01-01
 ```
 
 This will:
@@ -60,7 +57,7 @@ This will:
 ## Simulating
 
 ```bash
-python3 scripts/simulate_paths.py --ckpt checkpoints/model.pt --x0 0.0
+python3 -m scripts.simulate_paths --ckpt checkpoints/model.pt --stats checkpoints/normalisation.json
 
 ```
 
@@ -71,14 +68,13 @@ dynamics.
 ## Quick evaluation
 
 ```bash
-python scripts/evaluate.py \
-    --ckpt checkpoints/model.pt
+python3 -m scripts.evaluate     --ckpt checkpoints/model.pt     --ticker ^GSPC     --start 2005-01-01     --end 2025-01-01     --interval 1d
 ```
 
-This reloads some market data, simulates one path of the same length and plots:
+This loads some market data, simulates one path of the same length and plots:
 
 - the real vs generated log‑price series,
 - histograms of returns, and
 - the ACF of absolute returns.
 
-It also prints a handful of summary statistics to stdout
+It also prints a handful of summary statistics
