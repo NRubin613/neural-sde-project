@@ -91,7 +91,7 @@ from scipy.stats import kurtosis
 import os
 
 
-def compute_metrics(real_log, gen_log, delta=1.0/252.0):
+def compute_metrics(real_log, gen_log):
     """
     real_log, gen_log: 1D sequences of log-prices
     """
@@ -125,8 +125,8 @@ def _acf(x, nlags=40):
 
     corr = np.correlate(x, x, mode="full")
     corr = corr[corr.size // 2:]      # lags 0,1,2,...
-    corr = corr[:nlags + 1]
-    return corr / corr[0]
+    corr = corr[1:nlags + 2]
+    return corr / corr[1]
 
 
 def plot_comparison(real_log, gen_log, save_path,
