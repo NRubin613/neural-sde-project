@@ -31,6 +31,8 @@ def parse_args():
     p.add_argument("--delta", type=float, default=1.0 / 252.0)
     p.add_argument("--l2_mu", type=float, default=1)
     p.add_argument("--l2_sigma", type=float, default=1e-1)
+    p.add_argument("--volatility_max", type=float, default=1.0)
+
 
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--out_dir", type=str, default="checkpoints")
@@ -78,7 +80,7 @@ def main():
 
     # Model + training
     device = torch.device(args.device)
-    model = NeuralSDE(hidden=args.hidden)
+    model = NeuralSDE(hidden=args.hidden, volatility_max=args.volatility_max)
     print(f"[train] Model has {sum(p.numel() for p in model.parameters())} parameters.")
 
     model = train_mle(

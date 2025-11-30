@@ -111,7 +111,7 @@ def compute_metrics(real_log, gen_log):
 
     return metrics
 
-
+'''
 def _acf(x, nlags=40):
     """
     Simple autocorrelation function for a 1D array x.
@@ -127,10 +127,26 @@ def _acf(x, nlags=40):
     corr = corr[corr.size // 2:]      # lags 0,1,2,...
     corr = corr[1:nlags + 2]
     return corr / corr[0]
+'''
+
+def _acf(x, nlags=40):
+    x = np.asarray(x, dtype=float)
+    x = x - x.mean()
+    n = len(x)
+    if n < 2:
+        return np.ones(1)
+
+    var = np.dot(x, x)  # = sum x_t^2
+    acf_vals = []
+    for k in range(nlags + 1):
+        num = np.dot(x[:n-k], x[k:])
+        acf_vals.append(num / var)
+    return np.array(acf_vals)
+
 
 
 def plot_comparison(real_log, gen_log, save_path,
-                    title="Real vs generated (log-price)", nlags=40):
+                    title="Real vs generated (log-price)", nlags=100):
     """
     real_log, gen_log: sequences of log-prices.
 

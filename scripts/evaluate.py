@@ -33,6 +33,7 @@ def parse_args():
     p.add_argument("--delta", type=float, default=1.0 / 252.0)
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--hidden", type=int, default=64)
+    p.add_argument("--volatility_max", type=float, default=1.0)
     p.add_argument(
         "--out",
         type=str,
@@ -78,7 +79,7 @@ def main():
 
     # --- model ---
     device = torch.device(args.device)
-    model = NeuralSDE(hidden=args.hidden).to(device)
+    model = NeuralSDE(hidden=args.hidden, volatility_max=args.volatility_max).to(device)
     state = torch.load(args.ckpt, map_location=device)
     model.load_state_dict(state)
     model.eval()

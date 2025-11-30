@@ -49,9 +49,10 @@ class DriftNet(nn.Module):
 class DiffusionNet(nn.Module):
     """Neural network parameterising the diffusion σ(x, t) > 0."""
 
-    def __init__(self, hidden: int = 64):
+    def __init__(self, hidden = 64, volatility_max = 1.0):
         super().__init__()
         self.tmlp = TimeDistributedMLP(in_dim=2, hidden=hidden, out_dim=1)
+        self.volatility_max = volatility_max
 
     def forward(self, x_t, t) -> torch.Tensor:
         inp = torch.cat([x_t, t], dim=-1)
@@ -59,17 +60,17 @@ class DiffusionNet(nn.Module):
         # softplus keeps σ strictly positive but behaves like identity for
         # large |x|; the small epsilon protects against log(0) in the loss.
         sigma = torch.nn.functional.softplus(sigma_raw) + 1e-6
-        sigma = torch.clamp(sigma, max=1)  # prevent extreme values
+        sigma = torch.clamp(sigma, max = self.volatility_max)  # prevent extreme values
         return sigma
 
 
 class NeuralSDE(nn.Module):
     """Wrapper exposing ``μ(x, t)`` and ``σ(x, t)`` as a single module."""
 
-    def __init__(self, hidden: int = 64, drift_scale: float = 0.1):
+    def __init__(self, hidden = 64, drift_scale = 0.1, volatility_max = 2.0):
         super().__init__()
         self.mu = DriftNet(hidden=hidden, drift_scale=drift_scale)
-        self.sigma = DiffusionNet(hidden=hidden)
+        self.sigma = DiffusionNet(hidden=hidden, volatility_max=volatility_max)
 
     def forward(self, x_t, t):
         return self.mu(x_t, t), self.sigma(x_t, t)
