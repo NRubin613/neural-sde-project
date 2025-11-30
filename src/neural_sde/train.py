@@ -1,10 +1,6 @@
 import math
-
 import torch
 from torch.utils.data import DataLoader
-
-from .utils import time_grid
-
 
 def gaussian_nll(dx, mean, var, eps=1e-6):
     """Element-wise negative log-likelihood of a Normal distribution."""
@@ -20,14 +16,14 @@ def train_mle(
     lr = 1e-3,
     device = "cpu",
     delta = 1.0 / 252.0,
-    l2_mu = 1e-2,
+    l2_mu = 1,
     l2_sigma = 1e-3,
 ):
     """Maximum likelihood training loop.
 
     The discrete-time approximation assumes that
 
-        ΔX_t ≈ N( μ(x_t, t) Δ,  σ(x_t, t)^2 Δ )
+        ΔX_t ≈ N( μ(x_t) Δ,  σ(x_t)^2 Δ )
 
     where Δ is `delta`. We treat all (x_t, x_{t+1}) pairs inside a window as
     conditionally independent given the model parameters.
@@ -41,37 +37,34 @@ def train_mle(
         total_loss = 0.0
         n_batches = 0
 
-        for batch in loader:
-            batch = batch.to(device)  # (B, L, 1)
-            b, length, _ = batch.shape
+        for batch_x, batch_y in loader:
+            batch_x = batch_x.to(device) #inputs
+            batch_y = batch_y.to(device) #targets
 
-            # time feature in [0, 1]
-            t = time_grid(batch, length)
+    
+            mu_hat, sigma_hat = model(batch_x)
 
-            x_t = batch[:, :-1, :]        # (B, L-1, 1)
-            x_next = batch[:, 1:, :]      # (B, L-1, 1)
-            mu_hat, sigma_hat = model(x_t, t[:, :-1, :])
-
-            dx = x_next - x_t
             mean = mu_hat * delta
             var = (sigma_hat ** 2) * delta
 
             # core NLL
-            nll = gaussian_nll(dx, mean, var).mean()
+            nll = gaussian_nll(batch_y, mean, var).mean()
 
-            # drift regularisation: keep μ̂ small
-            reg_mu = 0.0
-            if l2_mu > 0.0:
-                reg_mu = (mu_hat ** 2).mean()
+            # drift regularisation: keep μ small
+            reg_mu = (mu_hat ** 2).mean() if l2_mu > 0 else 0.0
 
-            # diffusion regularisation: keep log σ̂ near 0 
-            reg_sigma = 0.0
-            if l2_sigma > 0.0:
-                # +eps inside log to avoid log(0)
-                log_sigma = torch.log(sigma_hat + 1e-8)
-                reg_sigma = (log_sigma ** 2).mean()
+            # diffusion regularisation: keep log σ near 0 
+            # +eps inside log to avoid log(0)
+            log_sigma = torch.log(sigma_hat + 1e-8)
+            reg_sigma = (log_sigma ** 2).mean() if l2_sigma > 0 else 0.0
 
-            loss = nll + l2_mu * reg_mu + l2_sigma * reg_sigma
+            """if mu_hat.shape[1] > 1:
+                mu_diff = mu_hat[:, 1:, :] - mu_hat[:, :-1, :]
+                reg_smooth = (mu_diff ** 2).mean()
+            else:
+                reg_smooth = 0.0"""
+
+            loss = nll + l2_mu * reg_mu + l2_sigma * reg_sigma #+ 5 * reg_smooth
 
             opt.zero_grad()
             loss.backward()

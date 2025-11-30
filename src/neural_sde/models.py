@@ -9,7 +9,7 @@ class TimeDistributedMLP(nn.Module):
     ``(batch, time, out_dim)``.
     """
 
-    def __init__(self, in_dim = 2, hidden = 64, out_dim = 1):
+    def __init__(self, in_dim = 5, hidden = 64, out_dim = 1):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(in_dim, hidden),
@@ -29,34 +29,37 @@ class TimeDistributedMLP(nn.Module):
 
 
 class DriftNet(nn.Module):
-    """Neural network parameterising the drift μ(x, t).
+    """Neural network parameterising the drift μ(features).
 
     We bound the output with ``tanh`` to avoid numerical blow‑ups when
     simulating.  The scale can be tuned via ``drift_scale``.
     """
 
-    def __init__(self, hidden = 64, drift_scale = 0.1):
+    def __init__(self, in_dim=5, hidden = 64, drift_scale = 1):
         super().__init__()
-        self.tmlp = TimeDistributedMLP(in_dim=2, hidden=hidden, out_dim=1)
+        self.tmlp = TimeDistributedMLP(in_dim= in_dim, hidden=hidden, out_dim=1)
         self.drift_scale = drift_scale
 
-    def forward(self, x_t, t) -> torch.Tensor:
-        inp = torch.cat([x_t, t], dim=-1)
-        mu_raw = self.tmlp(inp)
+        final_layer = self.tmlp.net[-1]
+        nn.init.uniform_(final_layer.weight, -1e-4, 1e-4) # Near zero
+        nn.init.zeros_(final_layer.bias)
+
+    def forward(self, x_t) -> torch.Tensor:
+        mu_raw = self.tmlp(x_t)
+        #return mu_raw
         return self.drift_scale * torch.tanh(mu_raw)
 
 
 class DiffusionNet(nn.Module):
-    """Neural network parameterising the diffusion σ(x, t) > 0."""
+    """Neural network parameterising the diffusion σ(features) > 0."""
 
-    def __init__(self, hidden = 64, volatility_max = 1.0):
+    def __init__(self, in_dim = 5, hidden = 64, volatility_max = 1.0):
         super().__init__()
-        self.tmlp = TimeDistributedMLP(in_dim=2, hidden=hidden, out_dim=1)
+        self.tmlp = TimeDistributedMLP(in_dim=in_dim, hidden=hidden, out_dim=1)
         self.volatility_max = volatility_max
 
-    def forward(self, x_t, t) -> torch.Tensor:
-        inp = torch.cat([x_t, t], dim=-1)
-        sigma_raw = self.tmlp(inp)
+    def forward(self, x_t) -> torch.Tensor:
+        sigma_raw = self.tmlp(x_t)
         # softplus keeps σ strictly positive but behaves like identity for
         # large |x|; the small epsilon protects against log(0) in the loss.
         sigma = torch.nn.functional.softplus(sigma_raw) + 1e-6
@@ -67,10 +70,10 @@ class DiffusionNet(nn.Module):
 class NeuralSDE(nn.Module):
     """Wrapper exposing ``μ(x, t)`` and ``σ(x, t)`` as a single module."""
 
-    def __init__(self, hidden = 64, drift_scale = 0.1, volatility_max = 2.0):
+    def __init__(self, in_dim=5, hidden = 64, drift_scale = 1, volatility_max = 2.0):
         super().__init__()
-        self.mu = DriftNet(hidden=hidden, drift_scale=drift_scale)
-        self.sigma = DiffusionNet(hidden=hidden, volatility_max=volatility_max)
+        self.mu = DriftNet(in_dim=in_dim, hidden=hidden, drift_scale=drift_scale)
+        self.sigma = DiffusionNet(in_dim= in_dim, hidden=hidden, volatility_max=volatility_max)
 
-    def forward(self, x_t, t):
-        return self.mu(x_t, t), self.sigma(x_t, t)
+    def forward(self, x_t):
+        return self.mu(x_t), self.sigma(x_t)

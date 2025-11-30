@@ -120,62 +120,19 @@ def load_or_download(
     df.to_csv(path, index=False)
     return df
 
-
-# Preprocessing: log prices and windows
-
-
-def to_log_prices(close_series) -> np.ndarray:
-    """Convert a Series/array of prices to log-prices as a 1D NumPy array."""
-    arr = np.asarray(close_series, dtype=float).reshape(-1)
-    if np.any(arr <= 0):
-        raise ValueError("prices must be strictly positive to take logs")
-    return np.log(arr)
-
-
-def make_windows(x: np.ndarray, seq_len, normalise = False) -> np.ndarray:
-    """
-    Slice a 1D array into overlapping windows of length ``seq_len``.
-
-    NOTE: By default we do *not* normalise per-window; we use global
-    normalisation in the training script so that scale is consistent
-    between training and simulation.
-    """
-    x = np.asarray(x, dtype=float).reshape(-1)  # ensure 1D
-
-    if seq_len < 2 or seq_len > x.shape[0]:
-        raise ValueError("seq_len must be at least 2 and at most len(x)")
-
-    windows = []
-    for start_idx in range(x.shape[0] - seq_len + 1):
-        w = x[start_idx : start_idx + seq_len].astype("float32")
-        if normalise:
-            m = w.mean()
-            s = w.std()
-            if s > 0:
-                w = (w - m) / s
-            else:
-                w = w - m
-        windows.append(w)
-
-    return np.stack(windows, axis=0)
-
-
 # Dataset wrapper
 
 
 class TimeSeriesWindowsDataset(Dataset):
-    """Simple Dataset wrapper around a ``(N, L)`` array of windows."""
-
-    def __init__(self, windows):
+    def __init__(self, features, targets):
         super().__init__()
-        if windows.ndim != 2:
-            raise ValueError("windows should be 2D (num_windows, L)")
-        # (N, L, 1)
-        self.windows = torch.from_numpy(windows).float().unsqueeze(-1)
+        # features: (N, L, D)
+        # targets: (N, L, 1)
+        self.features = features
+        self.targets = targets
 
     def __len__(self):
-        return self.windows.shape[0]
+        return self.features.shape[0]
 
     def __getitem__(self, idx):
-        # returns (L, 1)
-        return self.windows[idx]
+        return self.features[idx], self.targets[idx]

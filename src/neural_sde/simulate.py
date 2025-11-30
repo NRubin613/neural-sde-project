@@ -1,9 +1,11 @@
 import torch
+import numpy as np
 
 
 @torch.no_grad()
 def simulate_paths(
     model: torch.nn.Module,
+    engine,
     x0,
     steps = 256,
     delta = 1.0 / 252.0,
@@ -34,23 +36,45 @@ def simulate_paths(
         A list containing ``n`` paths, each of length ``steps + 1``.
     """
     model.eval().to(device)
-    x0 = torch.as_tensor(x0, dtype=torch.float32, device=device).view(1, 1, 1)  # (1,1,1)
 
     paths = []
+
+    # Backup engine state
+    base_state = {
+        'prev_price': engine.prev_price,
+        'ema_var': engine.ema_var,
+        'ema_trend': engine.ema_trend,
+        'avg_gain': engine.avg_gain,
+        'avg_loss': engine.avg_loss
+    }
+
     for _ in range(n):
-        x = x0.clone()
-        xs = [x.item()]
+        # Reset Engine
+        for k, v in base_state.items():
+            setattr(engine, k, v)
+
+        current_price = float(x0)
+        path = [current_price]
+
         for i in range(steps):
-            t = torch.tensor(
-                [[[i / max(steps - 1, 1)]]],
-                dtype=torch.float32,
-                device=device,
-            )
-            mu, sigma = model(x, t)
-            #print(x, mu, sigma)
-            noise = torch.randn_like(mu)
-            x = x + mu * delta + sigma * noise * (delta**0.5)
-            xs.append(x.item())
-        paths.append(xs)
+
+            # Get Features from Engine
+            features = engine.update_simulation(current_price).unsqueeze(0).to(device)
+            
+            # Predict
+            mu, sigma = model(features.unsqueeze(1))
+            mu = mu.item()
+            sigma = sigma.item()
+            #print(mu, sigma)
+            
+            #Geometric Brownian Motion
+            noise = np.random.normal(0, 1)
+            # Log-return approximation
+            ret = mu * delta + sigma * noise * np.sqrt(delta)
+            
+            current_price = current_price * np.exp(ret)
+            path.append(current_price)
+            
+        paths.append(path)
 
     return paths
