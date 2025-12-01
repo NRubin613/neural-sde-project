@@ -40,6 +40,7 @@ class DriftNet(nn.Module):
         self.tmlp = TimeDistributedMLP(in_dim= in_dim, hidden=hidden, out_dim=1)
         self.drift_scale = drift_scale
 
+        # Initialise final layer near zero to start with small drifts
         final_layer = self.tmlp.net[-1]
         nn.init.uniform_(final_layer.weight, -1e-4, 1e-4) # Near zero
         nn.init.zeros_(final_layer.bias)

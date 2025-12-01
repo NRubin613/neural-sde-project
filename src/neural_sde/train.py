@@ -23,10 +23,9 @@ def train_mle(
 
     The discrete-time approximation assumes that
 
-        ΔX_t ≈ N( μ(x_t) Δ,  σ(x_t)^2 Δ )
+        ΔX_t ≈ N( μ(features) Δ,  σ(features)^2 Δ )
 
-    where Δ is `delta`. We treat all (x_t, x_{t+1}) pairs inside a window as
-    conditionally independent given the model parameters.
+    where Δ is `delta`.
     """
     model.to(device)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -42,7 +41,7 @@ def train_mle(
             batch_y = batch_y.to(device) #targets
 
     
-            mu_hat, sigma_hat = model(batch_x)
+            mu_hat, sigma_hat = model(batch_x) # Predictions
 
             mean = mu_hat * delta
             var = (sigma_hat ** 2) * delta
@@ -58,6 +57,7 @@ def train_mle(
             log_sigma = torch.log(sigma_hat + 1e-8)
             reg_sigma = (log_sigma ** 2).mean() if l2_sigma > 0 else 0.0
 
+            # temporal smoothness regularisation on μ
             """if mu_hat.shape[1] > 1:
                 mu_diff = mu_hat[:, 1:, :] - mu_hat[:, :-1, :]
                 reg_smooth = (mu_diff ** 2).mean()
