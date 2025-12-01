@@ -19,12 +19,12 @@ def simulate_paths(
     model:
         Trained ``NeuralSDE`` instance.
     x0:
-        Initial log‑price
+        Initial price
     steps:
-        Number of Euler–Maruyama steps to take.
+        Number of Euler-Maruyama steps to take.
     delta:
         Time step used for simulation.  Should match the value used during
-        training (default is one trading day in year‑fraction units).
+        training (default is one trading day in year-fraction units).
     device:
         Device to run the simulation on.
     n:
