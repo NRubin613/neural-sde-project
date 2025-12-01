@@ -3,6 +3,8 @@
 PyTorch project to fit a **1‑dimensional stochastic differential equation**
 directly to a price series and then simulate sample paths.
 
+Have a look at the plots folder to get a high-level understanding of the model.
+
 We model log‑prices `X_t` via
 
 > dX_t = μ_θ(features) dt + σ_φ(features) dW_t
@@ -61,7 +63,7 @@ This will:
 ## Simulating
 
 ```bash
-python3 -m scripts.simulate_paths --ckpt checkpoints/model.pt --stats checkpoints/normalisation.json
+python3 -m scripts.simulate_paths --ckpt checkpoints/model.pt
 
 ```
 
