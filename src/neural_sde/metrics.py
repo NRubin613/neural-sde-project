@@ -1,33 +1,104 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import kurtosis
+from scipy.stats import skew, kurtosis, jarque_bera
 import os
+
+def max_drawdown(prices):
+    """Calculates the maximum percentage drop from a peak."""
+    prices = np.array(prices)
+    peak = np.maximum.accumulate(prices)
+    drawdown = (prices - peak) / peak
+    return drawdown.min()
 
 def compute_metrics(real_log, gen_log):
     """
-    Computes statistical metrics on LOG-RETURNS.
-    
-    Parameters
-    ----------
-    real_log, gen_log: 1D arrays of log-prices.
+    Computes financial metrics on LOG-PRICES and RETURNS.
     """
-    real_log = np.asarray(real_log, dtype=float)
-    gen_log  = np.asarray(gen_log, dtype=float)
-
-    # Convert log-prices to log-returns (diff)
+    # Convert log-prices to Prices for Drawdown calculation
+    real_prices = np.exp(real_log)
+    gen_prices = np.exp(gen_log)
+    
+    # Log-Returns (approx % change)
     real_ret = np.diff(real_log)
     gen_ret  = np.diff(gen_log)
 
     metrics = {}
 
-    # Basic moments of returns
-    for name, r in [("real", real_ret), ("gen", gen_ret)]:
+    for name, r, p in [("real", real_ret, real_prices), ("gen", gen_ret, gen_prices)]:
+        # 1. Moments
         metrics[f"{name}_mean"]     = float(np.mean(r))
         metrics[f"{name}_std"]      = float(np.std(r, ddof=1))
-        metrics[f"{name}_kurtosis"] = float(kurtosis(r, fisher=False)) # Fisher=False means Pearson (normal=3.0)
+        metrics[f"{name}_skew"]     = float(skew(r))
+        metrics[f"{name}_kurtosis"] = float(kurtosis(r, fisher=False)) # Normal = 3.0
+        
+        # 2. Normality Test (Jarque-Bera)
+        # Returns (statistic, p-value). We just want the statistic (magnitude of non-normality).
+        jb_stat, _ = jarque_bera(r)
+        metrics[f"{name}_jb"] = float(jb_stat)
+
+        # 3. Volatility Clustering (ACF of Squared Returns at Lag 1)
+        # This measures "memory" in volatility
+        r_sq = r ** 2
+        r_sq_mean = r_sq.mean()
+        # Simple lag-1 autocorrelation of r^2
+        num = np.mean((r_sq[:-1] - r_sq_mean) * (r_sq[1:] - r_sq_mean))
+        denom = np.var(r_sq)
+        metrics[f"{name}_vol_clust"] = float(num / (denom + 1e-9))
+
+        # 4. Max Drawdown (Risk)
+        metrics[f"{name}_mdd"] = float(max_drawdown(p))
 
     return metrics
 
+
+def save_metrics_table(metrics, save_path):
+    """
+    Saves a comparison table of ADVANCED metrics as an image.
+    """
+    # Define Rows and Keys to extract
+    table_map = [
+        ("Daily Mean", "mean", "{:.6f}"),
+        ("Daily Volatility", "std", "{:.4f}"),
+        ("Skewness", "skew", "{:.4f}"),
+        ("Kurtosis (Fat Tails)", "kurtosis", "{:.2f}"),
+        ("Jarque-Bera Score", "jb", "{:.0f}"),
+        ("Vol Clustering (Lag-1)", "vol_clust", "{:.4f}"),
+        ("Max Drawdown", "mdd", "{:.2%}"),
+    ]
+    
+    rows = [item[0] for item in table_map]
+    cols = ["Real Data", "Neural SDE"]
+    
+    cell_text = []
+    for label, key_suffix, fmt in table_map:
+        val_real = metrics[f"real_{key_suffix}"]
+        val_gen  = metrics[f"gen_{key_suffix}"]
+        cell_text.append([fmt.format(val_real), fmt.format(val_gen)])
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(6, 4)) # Taller for more rows
+    ax.axis('tight')
+    ax.axis('off')
+    
+    # Create table
+    table = ax.table(cellText=cell_text,
+                     rowLabels=rows,
+                     colLabels=cols,
+                     cellLoc='center',
+                     loc='center')
+    
+    table.auto_set_font_size(False)
+    table.set_fontsize(11)
+    table.scale(1.2, 1.8)
+
+    # Save
+    base, ext = os.path.splitext(save_path)
+    if not ext: ext = ".png"
+    table_path = base + "_table" + ext
+    
+    plt.savefig(table_path, bbox_inches='tight', dpi=150)
+    plt.close()
+    print("  ", table_path)
 
 def _acf(x, nlags=40):
     """
@@ -135,3 +206,7 @@ def plot_comparison(real_log, gen_log, save_path,
     print("  ", paths_path)
     print("  ", returns_path)
     print("  ", acf_path)
+
+    # --- Plot 4: Tables ---
+    metrics = compute_metrics(real_log, gen_log)
+    save_metrics_table(metrics, save_path)
