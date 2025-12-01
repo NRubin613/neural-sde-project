@@ -87,7 +87,7 @@ def main():
     model.eval()
 
     # --- Simulate One Path ---
-    # simulate_paths returns REAL prices now
+    # simulate_paths returns REAL prices
     paths = simulate_paths(
         model,
         engine=engine,
@@ -138,7 +138,6 @@ def main():
     
     # 2. Extract and Plot Drift/Diffusion Trajectories
     # We re-run a simplified pass to extract mu/sigma for visualization
-    # (This is better than static 1D plots for high-dim models)
     drift_vals = []
     diff_vals = []
     
